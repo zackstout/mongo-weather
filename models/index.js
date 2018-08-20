@@ -1,6 +1,6 @@
 
 module.exports = {
-  RealWeather: require("./Real-Weather.js"),
-  PredictedWeather: require("./Predicted-Weather.js"),
+  RealWeather: require("./RealWeather.js"),
+  PredictedWeather: require("./PredictedWeather.js"),
   Datetime: require("./Datetime.js"),
 };

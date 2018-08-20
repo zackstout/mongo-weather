@@ -2,14 +2,9 @@
 var mongoose = require("mongoose");
 var Schema = mongoose.Schema;
 
-var WeatherSchema = new Schema({
-  text: String,
-  speaker: String,
-  line_no: String,
-  play: {
-    type: Schema.Types.ObjectId,
-    ref: 'Play'
-  }
+var DatetimeSchema = new Schema({
+  dt: Number,
+  dt_txt: String, // sure this is redundant, but hey
 });
 
-module.exports = mongoose.model("Weather", WeatherSchema);
+module.exports = mongoose.model("Datetime", DatetimeSchema);
