@@ -12,11 +12,11 @@ $(document).ready(function() {
   //   }
   // });
 
-  $.ajax({
-    type: "GET",
-    url: "/api/forecast",
-    success: function(data) {
-      console.log("forecast data is: ", data);
-    }
-  });
+  // $.ajax({
+  //   type: "GET",
+  //   url: "/api/forecast",
+  //   success: function(data) {
+  //     console.log("forecast data is: ", data);
+  //   }
+  // });
 });

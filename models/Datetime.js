@@ -11,10 +11,13 @@ var DatetimeSchema = new Schema({
       ref: "PredictedWeather"
     }
   ],
-  real: {
+  // making it an array out of pure laziness, so we needn't change update code
+  real: [
+    {
     type: Schema.Types.ObjectId,
     ref: "RealWeather"
   }
+]
 });
 
 module.exports = mongoose.model("Datetime", DatetimeSchema);

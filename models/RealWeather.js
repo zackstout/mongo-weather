@@ -8,7 +8,6 @@ var RealWeatherSchema = new Schema({
     ref: 'Datetime'
   },
   rain: Number, // not sure what this measures
-  weather_main: String,
   weather_desc: String,
   wind_speed: Number,
   wind_deg: Number,

@@ -9,18 +9,27 @@ var moment = require('moment');
 
 const api_proj = process.env.API_PROJ;
 const api_key = process.env.API_KEY;
-const today = '0820';
+// const today = '0820';
+var schedule = require('node-schedule');
+
+// This means run every minute (whenever minute is divisible by 1):
+var j = schedule.scheduleJob('*/1 * * * *', function(){
+  console.log('The answer to life, the universe, and everything!');
+});
+
+// Note, we should also work in the daily summary property of History somehow
+
+getCurrentWeather();
 
 
 function getCurrentWeather() {
-  const date = new Date();
-  console.log(date);
-  axios.get(`http://api.wunderground.com/api/${api_proj}/history_2018${today}/q/MN/Minneapolis.json`)
-  .then(function(data) {
-    // console.log(data.data.history);
-    const hist = data.data.history;
-    // console.log('last history is ', hist.observations[hist.observations.length - 1]);
+  // Ew, using Date we were 5 hours ahead..
+  console.log(moment().format("YYYYMMDD"));
+  const today = moment().format("YYYYMMDD");
 
+  axios.get(`http://api.wunderground.com/api/${api_proj}/history_${today}/q/MN/Minneapolis.json`)
+  .then(function(data) {
+    const hist = data.data.history;
     const weather = hist.observations[hist.observations.length - 1];
     let hour = parseInt(weather.date.hour);
     // Have to get next relevant time, e.g. for 2:53 PM we want 3 PM, for 3:53 PM we want 6 PM:
@@ -32,30 +41,59 @@ function getCurrentWeather() {
       }
     }
 
-    // const date = new Date(parseInt(weather.date.year), parseInt(weather.date.mon) - 1, parseInt(weather.date.mday), hour, 0, 0); // August is 07.
-    // console.log(date);
-    // const month = weather;
     const mom_date = moment(`${weather.date.year}${weather.date.mon}${weather.date.mday}T${hour}00`);
     console.log(mom_date.format("X"));
 
-    const { tempi, dewpti, hum, wspdi, wdird, conds, rain, pressurei } = weather;
+    // Think this is unnecessary, we're just passing along whole object:
+    const { tempm, dewptm, hum, wspdm, wdird, conds, rain, pressurem } = weather;
 
-    DatetimeController.create(mom_date, mom_date.format("X"));
-    console.log(tempi, dewpti);
+    const nearest_time = mom_date.format("X");
 
+    db.Datetime.find({ dt: nearest_time })
+    .then(function(datetime) {
+      // will still need error handling here, even though in theory this dt should always exist (and have existed for 5 days)
+      addRealWeather(weather, nearest_time);
+    })
+    .catch(function(err) {
+      console.log(err);
+    });
+
+    // Should probably pass in current time:
+    // getForecast(mom_date.format("X"));
 
     // The last of the Observations array should be most up-to-date:
-    res.json(hist);
+    // res.json(hist);
   })
   .catch(function(err) {
-    res.json(err);
+    console.log(err);
+    // res.json(err);
   });
 }
 
-// Target is the Datetime document to which we're adding this prediction (i.e. when it's a prediction for):
-function addPrediction(pred, target) {
+
+function addRealWeather(weather, dt) {
+  db.RealWeather.create({
+    rain: parseInt(weather.rain),
+    humidity: weather.hum,
+    pressure: weather.pressurem,
+    temp: weather.tempm,
+    weather_desc: weather.conds,
+    wind_speed: weather.wspdm,
+    wind_deg: weather.wdird
+  })
+  .then(function(real_weather) {
+    return db.Datetime.findOneAndUpdate({ dt: dt }, { $push: { real: real_weather._id } }, { new: true });
+  })
+  .catch(function(err) {
+    console.log(err);
+  });
+}
+
+
+// pred.dt is the Datetime document to which we're adding this prediction (i.e. when it's a prediction for):
+function addPrediction(pred, timestamp) {
   db.PredictedWeather.create({
-    predictionMade: pred.dt, // this is wrong!!!
+    predictionMade: timestamp,
     rain: pred.rain ? pred.rain['3h'] : 0,
     humidity: pred.main.humidity,
     pressure: pred.main.pressure,
@@ -66,7 +104,49 @@ function addPrediction(pred, target) {
     wind_deg: pred.wind.deg
   })
   .then(function(prediction) {
-    return db.Datetime.findOneAndUpdate({ dt: target.dt }, { $push: { predictions: prediction._id } }, { new: true });
+    return db.Datetime.findOneAndUpdate({ dt: pred.dt }, { $push: { predictions: prediction._id } }, { new: true });
+  })
+  .catch(function(err) {
+    console.log(err);
+  });
+}
+
+
+function getForecast(timestamp) {
+  axios.get(`http://api.openweathermap.org/data/2.5/forecast?q=Minneapolis&APPID=${api_key}`)
+  .then(function(data) {
+    // console.log(data.data.list);
+    const list = data.data.list;
+
+    list.forEach(pred => {
+      db.Datetime.find({ dt: pred.dt })
+      .then(result => {
+
+        // Check whether we found a match:
+        if (!result[0]) {
+          // console.log('empty');
+          db.Datetime.create({
+            dt: pred.dt
+          })
+          .then(function(created_dt) {
+            // Create a prediction:
+            addPrediction(pred, timestamp);
+          })
+          .catch(function(err) {
+            console.log(err);
+          });
+
+        } else {
+          // console.log(result[0]);
+          // Update existing datetime with a prediction:
+          addPrediction(pred, timestamp);
+        }
+      })
+      .catch(err => {
+        console.log(err);
+      });
+
+    }); // end forEach
   })
   .catch(function(err) {
     console.log(err);
@@ -79,44 +159,6 @@ router.get('/forecast', function(req, res) {
   .then(function(data) {
     // console.log(data.data.list);
     const list = data.data.list;
-
-    getCurrentWeather();
-
-    // list.forEach(pred => {
-    //   // console.log(pred.dt);
-    //
-    //   db.Datetime.find({ dt: pred.dt })
-    //   .then(result => {
-    //     // Check whether we found a match:
-    //     if (!result[0]) {
-    //       // console.log('empty');
-    //       db.Datetime.create({
-    //         dt: pred.dt
-    //       })
-    //       .then(function(created_dt) {
-    //         // console.log(res2);
-    //
-    //         // Should def be split out into a function, used again below:
-    //         // Create a prediction:
-    //         addPrediction(pred, created_dt);
-    //       })
-    //       .catch(function(err) {
-    //         console.log(err);
-    //       });
-    //
-    //
-    //     } else {
-    //       console.log(result[0]);
-    //       // Update existing datetime with a prediction:
-    //       addPrediction(pred, result[0]);
-    //
-    //     }
-    //   })
-    //   .catch(err => {
-    //     console.log(err);
-    //   });
-    //
-    // }); // end forEach
 
     // We get 40 predictions: 8/day for next 5 days.
     res.json(list);
