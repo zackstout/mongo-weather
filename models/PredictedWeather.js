@@ -9,7 +9,7 @@ var PredictedWeatherSchema = new Schema({
   },
   // These are important:
   predictionMade: Number,
-  predictionMade_txt: String,
+  // predictionMade_txt: String,
 
   rain: Number, // not sure what this measures
   weather_main: String,
