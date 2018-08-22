@@ -1,11 +1,11 @@
 
 var express = require('express');
 var app = express();
-
 var port = process.env.PORT || 7080;
 var bodyParser = require('body-parser');
 
-var router = require('./routers/weather-router.js');
+// var router = require('./routers/weather-router.js');
+var router = require('./routers');
 
 app.use(bodyParser.json());
 // Needed this!!!:
@@ -14,10 +14,12 @@ app.use(bodyParser.urlencoded({
 }));
 
 
+
 // Can't have a slash here:
 app.use(express.static('public'));
 
-app.use('/api', router);
+// app.use('/api', router);
+app.use(router);
 
 var mongoose = require('mongoose');
 var databaseUrl = '';

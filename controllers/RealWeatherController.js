@@ -1,32 +1,50 @@
 
 const db = require("../models");
+var axios = require('axios');
+var dotenv = require('dotenv').config();
+var moment = require('moment');
+
 
 // Should only need to create -- and eventually will want more, to compare with predictions, etc.
 module.exports = {
-  findAll: function(req, res) {
-    db.Datetime
-      .find(req.query)
-      .sort({ date: -1 })
-      .then(dbModel => res.json(dbModel))
-      .catch(err => res.status(422).json(err));
+  addRealWeather(weather, dt) {
+    db.RealWeather.create({
+      rain: parseInt(weather.rain),
+      humidity: weather.hum,
+      pressure: weather.pressurem,
+      temp: weather.tempm,
+      weather_desc: weather.conds,
+      wind_speed: weather.wspdm,
+      wind_deg: weather.wdird
+    })
+    .then(function(real_weather) {
+      console.log('real weather is ', real_weather);
+      return db.Datetime.findOneAndUpdate({ dt: dt }, { $push: { real: real_weather._id } }, { new: true });
+
+    })
+    .catch(function(err) {
+      console.log(err);
+    });
   },
-  findByDT: function(req, res) {
-    db.Datetime
-      .find({dt: req.params.dt})
-      .then(dbModel => res.json(dbModel))
-      .catch(err => res.status(422).json(err));
-  },
-  create: function(req, res) {
-    db.Datetime
-      .create(req.body)
-      .then(dbModel => res.json(dbModel))
-      .catch(err => res.status(422).json(err));
-  },
-  remove: function(req, res) {
-    db.Datetime
-      .findById({ _id: req.params.id })
-      .then(dbModel => dbModel.remove())
-      .then(dbModel => res.json(dbModel))
-      .catch(err => res.status(422).json(err));
+
+  addDailySummary(weather, dt) {
+    db.RealWeather.create({
+      rain: parseInt(weather.rain),
+      humidity: weather.hum,
+      pressure: weather.pressurem,
+      temp: weather.tempm,
+      weather_desc: weather.conds,
+      wind_speed: weather.wspdm,
+      wind_deg: weather.wdird
+    })
+    .then(function(real_weather) {
+      console.log('real weather is ', real_weather);
+      return db.Datetime.findOneAndUpdate({ dt: dt }, { $push: { real: real_weather._id } }, { new: true });
+
+    })
+    .catch(function(err) {
+      console.log(err);
+    });
   }
+
 };
